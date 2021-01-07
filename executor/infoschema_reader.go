@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb/kv"
 	"io/ioutil"
 	"net/http"
 	"sort"
@@ -142,6 +143,8 @@ func (e *memtableRetriever) retrieve(ctx context.Context, sctx sessionctx.Contex
 			err = e.setDataForStatementsSummary(sctx, e.table.Name.O)
 		case infoschema.TablePlacementPolicy:
 			err = e.setDataForPlacementPolicy(sctx)
+		case infoschema.TableTiDBTrx:
+			err = e.setDataForTiDBTrx(sctx)
 		}
 		if err != nil {
 			return nil, err
@@ -1863,6 +1866,12 @@ func (e *memtableRetriever) setDataForPlacementPolicy(ctx sessionctx.Context) er
 			rows = append(rows, row)
 		}
 	}
+	e.rows = rows
+	return nil
+}
+
+func (e *memtableRetriever) setDataForTiDBTrx(ctx sessionctx.Context) error {
+	rows := kv.Collector.ToDatums()
 	e.rows = rows
 	return nil
 }

@@ -17,10 +17,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"runtime/trace"
-	"strings"
-	"sync/atomic"
-
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
@@ -34,6 +30,9 @@ import (
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/pingcap/tipb/go-binlog"
 	"go.uber.org/zap"
+	"runtime/trace"
+	"strings"
+	"sync/atomic"
 )
 
 // TxnState wraps kv.Transaction to provide a new kv.Transaction.

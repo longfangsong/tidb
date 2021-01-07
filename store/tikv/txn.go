@@ -234,7 +234,10 @@ func (txn *tikvTxn) Commit(ctx context.Context) error {
 	})
 
 	start := time.Now()
-	defer func() { tikvTxnCmdHistogramWithCommit.Observe(time.Since(start).Seconds()) }()
+	defer func() {
+		tikvTxnCmdHistogramWithCommit.Observe(time.Since(start).Seconds())
+		kv.Collector.ReportTxnDone(txn.startTS)
+	}()
 
 	// connID is used for log.
 	var connID uint64
@@ -305,6 +308,7 @@ func (txn *tikvTxn) Commit(ctx context.Context) error {
 	if lock.IsStale() {
 		return kv.ErrWriteConflictInTiDB.FastGenByArgs(txn.startTS)
 	}
+	kv.Collector.ReportTxnCommitting(txn.startTS)
 	err = committer.execute(ctx)
 	if val == nil || connID > 0 {
 		txn.onCommitted(err)
@@ -336,6 +340,7 @@ func (txn *tikvTxn) Rollback() error {
 	txn.close()
 	logutil.BgLogger().Debug("[kv] rollback txn", zap.Uint64("txnStartTS", txn.StartTS()))
 	tikvTxnCmdHistogramWithRollback.Observe(time.Since(start).Seconds())
+	kv.Collector.ReportTxnDone(txn.startTS)
 	return nil
 }
 
@@ -362,6 +367,7 @@ func (txn *tikvTxn) collectLockedKeys() [][]byte {
 }
 
 func (txn *tikvTxn) onCommitted(err error) {
+	kv.Collector.ReportTxnDone(txn.startTS)
 	if txn.commitCallback != nil {
 		info := kv.TxnInfo{TxnScope: txn.GetUnionStore().GetOption(kv.TxnScope).(string), StartTS: txn.startTS, CommitTS: txn.commitTS}
 		if err != nil {
@@ -429,6 +435,7 @@ func (txn *tikvTxn) LockKeys(ctx context.Context, lockCtx *kv.LockCtx, keysInput
 	}
 	keys = deduplicateKeys(keys)
 	if txn.IsPessimistic() && lockCtx.ForUpdateTS > 0 {
+		kv.Collector.ReportTxnStart(txn.startTS, txn.snapshot.isolationLevel)
 		if txn.committer == nil {
 			// connID is used for log.
 			var connID uint64
