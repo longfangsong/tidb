@@ -15,6 +15,7 @@ package mock
 
 import (
 	"context"
+	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/tikv/oracle"
@@ -80,3 +81,7 @@ func (s *Store) GetMemCache() kv.MemManager {
 
 // ShowStatus implements kv.Storage interface.
 func (s *Store) ShowStatus(ctx context.Context, key string) (interface{}, error) { return nil, nil }
+
+func (s *Store) GetLocks() []*pb.LockInfo {
+	panic("implement me")
+}

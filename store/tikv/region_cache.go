@@ -785,7 +785,7 @@ func (c *RegionCache) LoadRegionsInKeyRange(bo *Backoffer, startKey, endKey []by
 		}
 		regions = append(regions, batchRegions...)
 		endRegion := batchRegions[len(batchRegions)-1]
-		if endRegion.ContainsByEnd(endKey) {
+		if len(endKey) == 0 || endRegion.ContainsByEnd(endKey) {
 			break
 		}
 		startKey = endRegion.EndKey()
@@ -1091,7 +1091,14 @@ func (c *RegionCache) scanRegions(bo *Backoffer, startKey, endKey []byte, limit 
 				return nil, errors.Trace(err)
 			}
 		}
-		regionsInfo, err := c.pdClient.ScanRegions(ctx, startKey, endKey, limit)
+		logutil.BgLogger().Info(fmt.Sprint(startKey, endKey))
+		var regionsInfo []*pd.Region
+		var err error
+		if len(startKey) == 0 && len(endKey) == 0 {
+			regionsInfo, err = c.pdClient.GetAllRegions(ctx, limit)
+		} else {
+			regionsInfo, err = c.pdClient.ScanRegions(ctx, startKey, endKey, limit)
+		}
 		if err != nil {
 			tikvRegionCacheCounterWithScanRegionsError.Inc()
 			backoffErr = errors.Errorf(

@@ -196,3 +196,7 @@ func (c *pdClient) GetAllMembers(ctx context.Context) ([]*pdpb.Member, error) {
 }
 
 func (c *pdClient) GetLeaderAddr() string { return "mockpd" }
+
+func (c *pdClient) GetAllRegions(ctx context.Context, limit int) ([]*pd.Region, error) {
+	panic("implement me")
+}

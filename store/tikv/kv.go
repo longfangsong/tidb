@@ -17,6 +17,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
+	"math"
 	"math/rand"
 	"net/url"
 	"strings"
@@ -520,6 +522,27 @@ func (s *tikvStore) GetTiKVClient() (client Client) {
 
 func (s *tikvStore) GetMemCache() kv.MemManager {
 	return s.memCache
+}
+
+func (s *tikvStore) GetLocks() []*pb.LockInfo {
+	bo := NewBackofferWithVars(context.Background(), 100, nil)
+	cache := s.GetRegionCache()
+	regions, _ := cache.LoadRegionsInKeyRange(bo, nil, nil)
+	var result []*pb.LockInfo
+	for _, region := range regions {
+		req := tikvrpc.NewRequest(tikvrpc.CmdScanLock, &pb.ScanLockRequest{
+			MaxVersion: math.MaxUint64,
+			StartKey:   nil,
+			Limit:      math.MaxUint32,
+		})
+		res, err := s.SendReq(bo, req, region.VerID(), time.Second*30)
+		if err != nil {
+			return result
+		}
+		resp := res.Resp.(*pb.ScanLockResponse)
+		result = append(result, resp.Locks...)
+	}
+	return result
 }
 
 func init() {

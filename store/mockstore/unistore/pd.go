@@ -116,3 +116,7 @@ func (c *pdClient) SplitRegions(ctx context.Context, splitKeys [][]byte, opts ..
 func (c *pdClient) GetRegionFromMember(ctx context.Context, key []byte, memberURLs []string) (*pd.Region, error) {
 	return nil, nil
 }
+
+func (c *pdClient) GetAllRegions(ctx context.Context, limit int) ([]*pd.Region, error) {
+	panic("implement me")
+}

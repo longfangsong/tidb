@@ -1534,7 +1534,8 @@ func (b *executorBuilder) buildMemTable(v *plannercore.PhysicalMemTable) Executo
 			strings.ToLower(infoschema.ClusterTableStatementsSummary),
 			strings.ToLower(infoschema.ClusterTableStatementsSummaryHistory),
 			strings.ToLower(infoschema.TablePlacementPolicy),
-			strings.ToLower(infoschema.TableTiDBTrx):
+			strings.ToLower(infoschema.TableTiDBTrx),
+			strings.ToLower(infoschema.TableDataLocks):
 			return &MemTableReaderExec{
 				baseExecutor: newBaseExecutor(b.ctx, v.Schema(), v.ID()),
 				table:        v.Table,

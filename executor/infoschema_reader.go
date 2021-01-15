@@ -145,6 +145,8 @@ func (e *memtableRetriever) retrieve(ctx context.Context, sctx sessionctx.Contex
 			err = e.setDataForPlacementPolicy(sctx)
 		case infoschema.TableTiDBTrx:
 			err = e.setDataForTiDBTrx(sctx)
+		case infoschema.TableDataLocks:
+			err = e.setDataForDataLocks(sctx)
 		}
 		if err != nil {
 			return nil, err
@@ -1873,6 +1875,17 @@ func (e *memtableRetriever) setDataForPlacementPolicy(ctx sessionctx.Context) er
 func (e *memtableRetriever) setDataForTiDBTrx(ctx sessionctx.Context) error {
 	rows := kv.Collector.ToDatums()
 	e.rows = rows
+	return nil
+}
+
+func (e *memtableRetriever) setDataForDataLocks(ctx sessionctx.Context) error {
+	locks := ctx.GetStore().GetLocks()
+	e.rows = [][]types.Datum{}
+	for _, lock := range locks {
+		e.rows = append(e.rows,
+			types.MakeDatums(lock.Key, lock.PrimaryLock, int64(lock.LockType), lock.LockVersion, lock.LockTtl, lock.LockForUpdateTs),
+		)
+	}
 	return nil
 }
 

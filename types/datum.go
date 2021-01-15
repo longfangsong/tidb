@@ -444,6 +444,8 @@ func (d *Datum) SetValueWithDefaultCollation(val interface{}) {
 		}
 	case int:
 		d.SetInt64(int64(x))
+	case int32:
+		d.SetInt64(int64(x))
 	case int64:
 		d.SetInt64(x)
 	case uint64:
