@@ -147,6 +147,8 @@ func (e *memtableRetriever) retrieve(ctx context.Context, sctx sessionctx.Contex
 			err = e.setDataForTiDBTrx(sctx)
 		case infoschema.TableDataLocks:
 			err = e.setDataForDataLocks(sctx)
+		case infoschema.TableDataLockWaits:
+			err = e.setDataForDataLockWaits(sctx)
 		}
 		if err != nil {
 			return nil, err
@@ -1884,6 +1886,17 @@ func (e *memtableRetriever) setDataForDataLocks(ctx sessionctx.Context) error {
 	for _, lock := range locks {
 		e.rows = append(e.rows,
 			types.MakeDatums(lock.Key, lock.PrimaryLock, int64(lock.LockType), lock.LockVersion, lock.LockTtl, lock.LockForUpdateTs),
+		)
+	}
+	return nil
+}
+
+func (e *memtableRetriever) setDataForDataLockWaits(sctx sessionctx.Context) error {
+	waits := sctx.GetStore().GetWaits()
+	e.rows = [][]types.Datum{}
+	for _, wait := range waits {
+		e.rows = append(e.rows,
+			types.MakeDatums(wait.WaitingForHash, wait.TransactionId, wait.LockTs),
 		)
 	}
 	return nil

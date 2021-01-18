@@ -158,7 +158,7 @@ func (s *testRegionCacheSuite) TestSimple(c *C) {
 	c.Assert(s.getAddr(c, []byte("a"), kv.ReplicaReadFollower, seed), Equals, s.storeAddr(s.store2))
 	s.checkCache(c, 1)
 	c.Assert(r.GetMeta(), DeepEquals, r.meta)
-	c.Assert(r.GetLeaderPeerID(), Equals, r.meta.Peers[r.getStore().workTiKVIdx].Id)
+	c.Assert(r.GetLeaderPeerID(), Equals, r.meta.Peers[r.GetStore().workTiKVIdx].Id)
 	s.cache.mu.regions[r.VerID()].lastAccess = 0
 	r = s.cache.searchCachedRegion([]byte("a"), true)
 	c.Assert(r, IsNil)
@@ -987,7 +987,7 @@ func (s *testRegionCacheSuite) TestScanRegions(c *C) {
 	c.Assert(len(scannedRegions), Equals, 5)
 	for i := 0; i < 5; i++ {
 		r := scannedRegions[i]
-		_, p, _, _ := r.WorkStorePeer(r.getStore())
+		_, p, _, _ := r.WorkStorePeer(r.GetStore())
 
 		c.Assert(r.meta.Id, Equals, regions[i])
 		c.Assert(p.Id, Equals, peers[i][0])
@@ -998,7 +998,7 @@ func (s *testRegionCacheSuite) TestScanRegions(c *C) {
 	c.Assert(len(scannedRegions), Equals, 3)
 	for i := 1; i < 4; i++ {
 		r := scannedRegions[i-1]
-		_, p, _, _ := r.WorkStorePeer(r.getStore())
+		_, p, _, _ := r.WorkStorePeer(r.GetStore())
 
 		c.Assert(r.meta.Id, Equals, regions[i])
 		c.Assert(p.Id, Equals, peers[i][0])
@@ -1009,7 +1009,7 @@ func (s *testRegionCacheSuite) TestScanRegions(c *C) {
 	c.Assert(len(scannedRegions), Equals, 1)
 
 	r0 := scannedRegions[0]
-	_, p0, _, _ := r0.WorkStorePeer(r0.getStore())
+	_, p0, _, _ := r0.WorkStorePeer(r0.GetStore())
 	c.Assert(r0.meta.Id, Equals, regions[1])
 	c.Assert(p0.Id, Equals, peers[1][0])
 
@@ -1020,7 +1020,7 @@ func (s *testRegionCacheSuite) TestScanRegions(c *C) {
 	c.Assert(err, IsNil)
 	for i := 0; i < 3; i++ {
 		r := scannedRegions[i]
-		_, p, _, _ := r.WorkStorePeer(r.getStore())
+		_, p, _, _ := r.WorkStorePeer(r.GetStore())
 
 		c.Assert(r.meta.Id, Equals, regions[i*2])
 		c.Assert(p.Id, Equals, peers[i*2][0])
@@ -1327,7 +1327,7 @@ func BenchmarkOnRequestFail(b *testing.B) {
 	}
 	region := cache.getRegionByIDFromCache(loc.Region.id)
 	b.ResetTimer()
-	regionStore := region.getStore()
+	regionStore := region.GetStore()
 	store, peer, accessIdx, _ := region.WorkStorePeer(regionStore)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -1341,7 +1341,7 @@ func BenchmarkOnRequestFail(b *testing.B) {
 			}
 			r := cache.getCachedRegionWithRLock(rpcCtx.Region)
 			if r != nil {
-				r.getStore().switchNextTiKVPeer(r, rpcCtx.AccessIdx)
+				r.GetStore().switchNextTiKVPeer(r, rpcCtx.AccessIdx)
 			}
 		}
 	})

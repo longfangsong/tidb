@@ -85,3 +85,7 @@ func (s *Store) ShowStatus(ctx context.Context, key string) (interface{}, error)
 func (s *Store) GetLocks() []*pb.LockInfo {
 	panic("implement me")
 }
+
+func (s *Store) GetWaits() []*pb.Wait {
+	panic("implement me")
+}

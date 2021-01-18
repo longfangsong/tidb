@@ -496,6 +496,8 @@ type Storage interface {
 	GetMemCache() MemManager
 
 	GetLocks() []*pb.LockInfo
+
+	GetWaits() []*pb.Wait
 }
 
 // FnKeyCmp is the function for iterator the keys

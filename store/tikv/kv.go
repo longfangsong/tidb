@@ -545,6 +545,26 @@ func (s *tikvStore) GetLocks() []*pb.LockInfo {
 	return result
 }
 
+func (s *tikvStore) GetWaits() []*pb.Wait {
+	bo := NewBackofferWithVars(context.Background(), 100, nil)
+	cache := s.GetRegionCache()
+	regions, err := cache.LoadRegionsInKeyRange(bo, nil, nil)
+	if err != nil {
+		logutil.BgLogger().Error(err.Error())
+		return nil
+	} else {
+		logutil.BgLogger().Info(fmt.Sprint(regions[0].meta.Id))
+	}
+	region := regions[0]
+	res, err := s.client.SendRequest(context.TODO(), region.GetStore().stores[0].addr, tikvrpc.NewRequest(tikvrpc.CmdGetAllWaiting, &pb.GetAllWaitingRequest{}), time.Second*30)
+
+	if err != nil {
+		logutil.BgLogger().Error(err.Error())
+		return nil
+	}
+	return res.Resp.(*pb.GetAllWaitingResponse).Waiting
+}
+
 func init() {
 	mc.cache = make(map[string]*tikvStore)
 	rand.Seed(time.Now().UnixNano())

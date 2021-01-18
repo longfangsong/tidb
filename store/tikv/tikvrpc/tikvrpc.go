@@ -77,6 +77,7 @@ const (
 	CmdMvccGetByKey CmdType = 1024 + iota
 	CmdMvccGetByStartTs
 	CmdSplitRegion
+	CmdGetAllWaiting
 
 	CmdDebugGetRegionProperties CmdType = 2048 + iota
 
@@ -161,6 +162,8 @@ func (t CmdType) String() string {
 		return "DebugGetRegionProperties"
 	case CmdTxnHeartBeat:
 		return "TxnHeartBeat"
+	case CmdGetAllWaiting:
+		return "CmdGetAllWaiting"
 	}
 	return "Unknown"
 }
@@ -387,6 +390,10 @@ func (req *Request) CheckSecondaryLocks() *kvrpcpb.CheckSecondaryLocksRequest {
 // TxnHeartBeat returns TxnHeartBeatRequest in request.
 func (req *Request) TxnHeartBeat() *kvrpcpb.TxnHeartBeatRequest {
 	return req.Req.(*kvrpcpb.TxnHeartBeatRequest)
+}
+
+func (req *Request) GetAllWaiting() *kvrpcpb.GetAllWaitingRequest {
+	return req.Req.(*kvrpcpb.GetAllWaitingRequest)
 }
 
 // ToBatchCommandsRequest converts the request to an entry in BatchCommands request.
@@ -890,6 +897,8 @@ func CallRPC(ctx context.Context, client tikvpb.TikvClient, req *Request) (*Resp
 		resp.Resp, err = client.KvCheckSecondaryLocks(ctx, req.CheckSecondaryLocks())
 	case CmdTxnHeartBeat:
 		resp.Resp, err = client.KvTxnHeartBeat(ctx, req.TxnHeartBeat())
+	case CmdGetAllWaiting:
+		resp.Resp, err = client.GetAllWaiting(ctx, req.GetAllWaiting())
 	default:
 		return nil, errors.Errorf("invalid request type: %v", req.Type)
 	}

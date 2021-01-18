@@ -87,6 +87,7 @@ require (
 go 1.13
 
 replace (
-	github.com/pingcap/kvproto => github.com/longfangsong/kvproto v0.0.0-20210113140106-91a026b54386
+	github.com/pingcap/kvproto => github.com/longfangsong/kvproto v0.0.0-20210118023823-0a36104f74d8
 	github.com/tikv/pd => github.com/longfangsong/pd v1.1.0-beta.0.20210114031354-010ce09d49c9
+	github.com/ngaut/unistore => github.com/longfangsong/unistore v0.0.0-20210118081241-d0733f8e3a55
 )

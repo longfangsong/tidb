@@ -157,6 +157,7 @@ const (
 	TablePlacementPolicy = "PLACEMENT_POLICY"
 	TableTiDBTrx         = "TRX"
 	TableDataLocks       = "DATA_LOCKS"
+	TableDataLockWaits   = "DATA_LOCK_WAITS"
 )
 
 var tableIDMap = map[string]int64{
@@ -228,6 +229,7 @@ var tableIDMap = map[string]int64{
 	TablePlacementPolicy:                    autoid.InformationSchemaDBID + 66,
 	TableTiDBTrx:                            autoid.InformationSchemaDBID + 67,
 	TableDataLocks:                          autoid.InformationSchemaDBID + 68,
+	TableDataLockWaits:                      autoid.InformationSchemaDBID + 69,
 }
 
 type columnInfo struct {
@@ -1309,6 +1311,12 @@ var tableDataLocksCols = []columnInfo{
 	{name: "LOCK_FORUPDATE_TS", tp: mysql.TypeLonglong, size: 64},
 }
 
+var tableDataLockWaitCols = []columnInfo{
+	{name: "WAITING_FOR_HASH", tp: mysql.TypeLonglong, size: 1024},
+	{name: "TRANSACTION_ID", tp: mysql.TypeLonglong, size: 1024},
+	{name: "LOCK_TS", tp: mysql.TypeLonglong, size: 1024},
+}
+
 // GetShardingInfo returns a nil or description string for the sharding information of given TableInfo.
 // The returned description string may be:
 //  - "NOT_SHARDED": for tables that SHARD_ROW_ID_BITS is not specified.
@@ -1677,6 +1685,7 @@ var tableNameToColumns = map[string][]columnInfo{
 	TablePlacementPolicy:                    tablePlacementPolicyCols,
 	TableTiDBTrx:                            tableTiDBTrxCols,
 	TableDataLocks:                          tableDataLocksCols,
+	TableDataLockWaits:                      tableDataLockWaitCols,
 }
 
 func createInfoSchemaTable(_ autoid.Allocators, meta *model.TableInfo) (table.Table, error) {
