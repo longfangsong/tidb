@@ -638,6 +638,7 @@ func (a *ExecStmt) handlePessimisticLockError(ctx context.Context, err error) (E
 	txnCtx := sessVars.TxnCtx
 	var newForUpdateTS uint64
 	if deadlock, ok := errors.Cause(err).(*tikv.ErrDeadlock); ok {
+		kv.Collector.ReportDeadLock(deadlock.Deadlock)
 		if !deadlock.IsRetryable {
 			return nil, ErrDeadlock
 		}

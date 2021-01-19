@@ -487,6 +487,7 @@ func (txn *tikvTxn) LockKeys(ctx context.Context, lockCtx *kv.LockCtx, keysInput
 			if len(keys) > 1 || keyMayBeLocked {
 				wg := txn.asyncPessimisticRollback(ctx, keys)
 				if dl, ok := errors.Cause(err).(*ErrDeadlock); ok && hashInKeys(dl.DeadlockKeyHash, keys) {
+					kv.Collector.ReportDeadLock(dl.Deadlock)
 					dl.IsRetryable = true
 					// Wait for the pessimistic rollback to finish before we retry the statement.
 					wg.Wait()

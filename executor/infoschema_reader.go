@@ -149,6 +149,8 @@ func (e *memtableRetriever) retrieve(ctx context.Context, sctx sessionctx.Contex
 			err = e.setDataForDataLocks(sctx)
 		case infoschema.TableDataLockWaits:
 			err = e.setDataForDataLockWaits(sctx)
+		case infoschema.TableDeadLock:
+			err = e.setDataForDeadLock(sctx)
 		}
 		if err != nil {
 			return nil, err
@@ -1898,6 +1900,14 @@ func (e *memtableRetriever) setDataForDataLockWaits(sctx sessionctx.Context) err
 		e.rows = append(e.rows,
 			types.MakeDatums(wait.WaitingForHash, wait.TransactionId, wait.LockTs),
 		)
+	}
+	return nil
+}
+
+func (e *memtableRetriever) setDataForDeadLock(sctx sessionctx.Context) error {
+	row := kv.Collector.DeadLockDatum()
+	if row != nil {
+		e.rows = [][]types.Datum{row}
 	}
 	return nil
 }

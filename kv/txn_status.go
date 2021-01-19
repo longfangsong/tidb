@@ -1,7 +1,10 @@
 package kv
 
 import (
+	"fmt"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/tidb/types"
+	"github.com/pingcap/tidb/util/logutil"
 	"sync"
 	"time"
 )
@@ -32,8 +35,20 @@ func (t *TxnStatus) ToDatum() []types.Datum {
 }
 
 type TxnStatusCollector struct {
-	mu   sync.Mutex
-	txns map[uint64]*TxnStatus
+	mu           sync.Mutex
+	txns         map[uint64]*TxnStatus
+	lastDeadLock *kvrpcpb.Deadlock
+}
+
+func (c *TxnStatusCollector) ReportDeadLock(deadlock *kvrpcpb.Deadlock) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	logutil.BgLogger().Info(fmt.Sprint(deadlock))
+	c.lastDeadLock = &kvrpcpb.Deadlock{
+		LockTs:          deadlock.GetLockTs(),
+		LockKey:         deadlock.GetLockKey(),
+		DeadlockKeyHash: deadlock.GetDeadlockKeyHash(),
+	}
 }
 
 func (c *TxnStatusCollector) ReportTxnStart(id uint64, isoLevel IsoLevel) {
@@ -85,4 +100,13 @@ func (c *TxnStatusCollector) ToDatums() [][]types.Datum {
 		result = append(result, status.ToDatum())
 	}
 	return result
+}
+
+func (c *TxnStatusCollector) DeadLockDatum() []types.Datum {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.lastDeadLock == nil {
+		return nil
+	}
+	return types.MakeDatums(c.lastDeadLock.LockKey, c.lastDeadLock.DeadlockKeyHash, c.lastDeadLock.LockTs)
 }
