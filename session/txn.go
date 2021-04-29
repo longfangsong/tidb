@@ -51,8 +51,8 @@ type LazyTxn struct {
 	// Pending: kv.Transaction == nil && txnFuture != nil
 	// Valid:	kv.Transaction != nil && txnFuture == nil
 	kv.Transaction
-	txnFuture *txnFuture
-
+	txnFuture     *txnFuture
+	info          atomic.Value // *txnInfo.TxnInfo
 	initCnt       int
 	stagingHandle kv.StagingHandle
 	mutations     map[int64]*binlog.TableMutation
@@ -63,6 +63,43 @@ type LazyTxn struct {
 	State txnInfo.TxnRunningState
 	// last trying to block start time
 	blockStartTime *time.Time
+}
+
+func (txn *LazyTxn) GetInfo() *txnInfo.TxnInfo {
+	info := txn.info.Load()
+	if info != nil {
+		info := info.(*txnInfo.TxnInfo)
+		return info
+	}
+	return nil
+}
+
+func (txn *LazyTxn) UpdateInfo() {
+	var currentInfo *txnInfo.TxnInfo = nil
+	if txn.Valid() {
+		currentInfo = &txnInfo.TxnInfo{
+			StartTS:          txn.StartTS(),
+			CurrentSQLDigest: txn.CurrentSQLDigest,
+			State:            txn.State,
+			BlockStartTime:   txn.blockStartTime,
+			Len:              txn.Len(),
+			Size:             txn.Size(),
+		}
+	}
+	txn.info.Store(currentInfo)
+}
+
+// Len and Size might be changed after `Set` and `Delete`
+func (txn *LazyTxn) Set(k kv.Key, v []byte) error {
+	result := txn.Transaction.Set(k, v)
+	txn.UpdateInfo()
+	return result
+}
+
+func (txn *LazyTxn) Delete(k kv.Key) error {
+	result := txn.Transaction.Delete(k)
+	txn.UpdateInfo()
+	return result
 }
 
 // GetTableInfo returns the cached index name.
@@ -171,11 +208,13 @@ func (txn *LazyTxn) changeInvalidToValid(kvTxn kv.Transaction) {
 	txn.State = txnInfo.TxnRunningNormal
 	txn.initStmtBuf()
 	txn.txnFuture = nil
+	txn.UpdateInfo()
 }
 
 func (txn *LazyTxn) changeInvalidToPending(future *txnFuture) {
 	txn.Transaction = nil
 	txn.txnFuture = future
+	txn.UpdateInfo()
 }
 
 func (txn *LazyTxn) changePendingToValid(ctx context.Context) error {
@@ -195,6 +234,7 @@ func (txn *LazyTxn) changePendingToValid(ctx context.Context) error {
 	txn.Transaction = t
 	txn.State = txnInfo.TxnRunningNormal
 	txn.initStmtBuf()
+	txn.UpdateInfo()
 	return nil
 }
 
@@ -205,6 +245,7 @@ func (txn *LazyTxn) changeToInvalid() {
 	txn.stagingHandle = kv.InvalidStagingHandle
 	txn.Transaction = nil
 	txn.txnFuture = nil
+	txn.UpdateInfo()
 }
 
 var hasMockAutoIncIDRetry = int64(0)
@@ -268,13 +309,16 @@ func (txn *LazyTxn) Commit(ctx context.Context) error {
 		}
 	})
 
-	return txn.Transaction.Commit(ctx)
+	txn.UpdateInfo()
+	result := txn.Transaction.Commit(ctx)
+	return result
 }
 
 // Rollback overrides the Transaction interface.
 func (txn *LazyTxn) Rollback() error {
 	defer txn.reset()
 	txn.State = txnInfo.TxnRollingBack
+	txn.UpdateInfo()
 	return txn.Transaction.Rollback()
 }
 
@@ -284,9 +328,11 @@ func (txn *LazyTxn) LockKeys(ctx context.Context, lockCtx *kv.LockCtx, keys ...k
 	txn.State = txnInfo.TxnLockWaiting
 	t := time.Now()
 	txn.blockStartTime = &t
+	txn.UpdateInfo()
 	err := txn.Transaction.LockKeys(ctx, lockCtx, keys...)
 	txn.blockStartTime = nil
 	txn.State = originState
+	txn.UpdateInfo()
 	return err
 }
 
@@ -344,17 +390,7 @@ func keyNeedToLock(k, v []byte, flags tikvstore.KeyFlags) bool {
 
 // Info dump the TxnState to Datum for displaying in `TIDB_TRX`
 func (txn *LazyTxn) Info() *txnInfo.TxnInfo {
-	if !txn.Valid() {
-		return nil
-	}
-	return &txnInfo.TxnInfo{
-		StartTS:          txn.StartTS(),
-		CurrentSQLDigest: txn.CurrentSQLDigest,
-		State:            txn.State,
-		BlockStartTime:   txn.blockStartTime,
-		Len:              txn.Transaction.Len(),
-		Size:             txn.Transaction.Size(),
-	}
+	return txn.GetInfo()
 }
 
 func getBinlogMutation(ctx sessionctx.Context, tableID int64) *binlog.TableMutation {
