@@ -98,6 +98,13 @@ func (s *extractStartTsSuite) TestExtractStartTs(c *C) {
 		result, _ := extractStartTs(s.store, cs)
 		if expected == 0 {
 			c.Assert(result, Greater, stalenessTimestamp)
+		} else if expected == stalenessTimestamp {
+			// "stalenessTimestamp" fetched by extractStartTs can be later than stalenessTimestamp fetched in this function
+			// because it *is* created in later physical time
+			c.Assert(result, GreaterEqual, expected)
+			// but it should not be late too much
+			maxStalenessTimestamp := oracle.ComposeTS(oracle.ExtractPhysical(stalenessTimestamp)+50, oracle.ExtractLogical(stalenessTimestamp))
+			c.Assert(result, Less, maxStalenessTimestamp)
 		} else {
 			c.Assert(result, Equals, expected)
 		}
